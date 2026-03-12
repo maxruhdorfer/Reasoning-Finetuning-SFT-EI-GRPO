@@ -17,7 +17,7 @@
 
 <br/>
 
-[Overview](#-overview) · [Methods](#-methods) · [Prompting](#-prompting-strategy) · [GRPO Loss](#-grpo-loss) · [Ablations](#-grpo-ablations) · [Results](#-results) · [Usage](#-usage) · [References](#-references)
+[Overview](#-overview) · [Methods](#-methods) · [Prompting](#-prompting-strategy) · [Ablations](#-grpo-ablations) · [Results](#-results) · [Usage](#-usage) · [References](#-references)
 
 </div>
 
@@ -53,19 +53,48 @@ Expert iteration [[2]](#-references) alternates between two phases:
 
 This iteratively improves the quality of the training distribution without having to rely on human-annotated reasoning traces. This is a natural bridge between pure SFT and RL-based methods.
 
-### GRPO (Group Relative Policy Optimisation)
+### REINFORCE and GRPO (Group Relative Policy Optimisation)
 
-GRPO [[1]](#-references) treats reasoning as a reinforcement learning problem with a verifiable binary reward. For each prompt, a group of $G$ responses is sampled from the current policy. Advantages are estimated by normalising rewards within each group — eliminating the need for a learned value network entirely:
+In RLVR [[1]](#-references) reasoning fine-tuning is treated as a reinforcement learning problem with a verifiable binary reward. The language model with parameters $\theta$ is treated as a policy $\pi_\theta$, which given a current state $s_t$ (the input tokens) defines a distribution for the next action (the next token) $a_t \sim \pi_\theta (\cdot | s_t)$, where $\pi_\theta (a_t | s_t)$ is simply the softmax of the language model output for the next token to turn the logits into a probability. The reward $R(\tau)$ for a given trajectory $\tau$, i.e. the full rollout, is binary and one typically assigns a reward of $1$ to a correct answer and a reward of $0$ to an incorrect answer. All reinforcement learning problems have the goal to maximize the expected return in some form, i.e. we want to maximize an objective function of the form
 
-$$\hat{A}_i = \frac{r_i - \text{mean}(\mathbf{r})}{\text{std}(\mathbf{r}) + \varepsilon}, \quad \mathbf{r} = (r_1, \ldots, r_G)$$
+$$ J(\theta) = \mathbb{E}_{\tau \sim \pi_\theta} [R(\tau)] = \sum_\tau P(\tau | \theta) R(\tau)\,. $$
+
+In a language model $P(\tau | \theta) = \rho_0 (s_0) \prod_{t=0}^T P(s_{t+1} | s_t , a_t) \pi_\theta (a_t |s_t)$. 
+Using the simple log derivative trick $\nabla_\theta P = P \nabla_\theta \log P$, one finds the REINFORCE policy gradient
+
+$$ \nabla_\theta J(\theta) = \mathbb{E}_{\tau \sim \pi_\theta} \left[\sum_{t=0}^T \nabla_\theta \log \pi_\theta (a_t | s_t) R(\tau) \right] $$
+
+The expectation value can be approximated by sampling rollouts from the language model. There are two useful observations: i) when writing the expectation value as a Monte Carlo probe of the rollouts, this is equivalent to considering a loss function without the gradient and ii) we can add a reward baseline $b(s_t)$ which decreases the varience of the reward estimator. This gives two versions of the REINFORCE algorithm/loss
+
+**Vanilla REINFORCE Loss**
+$$ L(\theta ) = -\frac{1}{N} \sum_{i=1}^{N} \sum_{t=0}^T \log \pi_\theta (a^{(i)}_t | s^{(i)}_t) R(\tau^{(i)})$$
+
+**REINFORCE Loss with Baseline**
+$$ L(\theta ) = -\frac{1}{N} \sum_{i=1}^{N} \sum_{t=0}^T \log \pi_\theta (a^{(i)}_t | s^{(i)}_t) (R(\tau^{(i)}) - b(s^{(i)}_t))$$
+
+The best choice is to use the state value function $V(s^{(i)}_t)$ which quantifies the average reward reached from state $s^{(i)}_t$. This is difficult to estimate for language models, which is why GRPO uses group advantages as baseline.
+
+**GRPO Algorithm**
+
+The GRPO algorithm picks a specific baseline and adds the capability for off-policy training, i.e. training on rollouts from an older version of the language model. The idea is the following: for each prompt, a group of $G$ responses is sampled from the current policy $\pi_{\theta_{\rm old}}. Advantages, i.e. baselines, are estimated by normalising rewards within each group — eliminating the need for a learned value network entirely:
+
+$$\hat{A}_i   = \frac{r_i - \text{mean}(\mathbf{r})}{\text{std}(\mathbf{r}) + \varepsilon}, \quad \mathbf{r} = (r_1, \ldots, r_G)\,,$$
+
+where $r_i$ are the rewards of the $i$-th group element. The full objective function is
+
+$$ J(\theta ) = \mathbb{E}_{q\sim\mathcal{D},\, \{o^{(i)}\}_{i=1}^G \sim \pi_\theta (\cdot | q)} \left[ \frac{1}{G}\sum_{i=1}^G \frac{1}{|o^{(i)}|} \sum_{t=1}^{|o^{(i)}|} \min\left( \frac{\pi_\theta (o_t^{(i)}| q , o^{(i)}_{<t})}{\pi_{\theta_{\rm old}} (o_t^{(i)}| q , o^{(i)}_{<t})} A^{(i)} , \text{clip}\left(\frac{\pi_\theta (o_t^{(i)}| q , o^{(i)}_{<t})}{\pi_{\theta_{\rm old}} (o_t^{(i)}| q , o^{(i)}_{<t})}, 1-\epsilon, 1+\epsilon \right) A^{(i)}\right) \right]\,, $$
+
+where $q$ are the questions and $o_t^{(i)}$ is the $i$-th model output at step $t$ in the trajectory. The policy ratios allow to go off-policy and are reminiscent of importance sampling. The clipping makes sure that we do not stray too far from the original policy. The original GRPO realization also had a KL loss term. However, recently it has been observed that the KL loss term is not needed [[5]](#-references).
 
 Rollouts are generated efficiently using [vLLM](https://github.com/vllm-project/vllm), with weights synchronised from the HuggingFace training model at the start of each rollout phase.
+
+### Grading and Rewards
 
 ---
 
 ## 💬 Prompting Strategy
 
-All methods use the **R1-Zero prompt format** [[1]](#-references), which instructs the model to externalise its reasoning in structured tags before committing to a final answer:
+All methods use the **R1-Zero prompt format** [[1]](#-references), which instructs the model to put its reasoning within thinking tags before committing to a final answer:
 
 ```
 A conversation between User and Assistant. The User asks a question, and the Assistant solves it. The Assistant first thinks about the reasoning process in the mind and then provides the User with the answer. The reasoning process is enclosed within <think> </think> and answer is enclosed within <answer> </answer> tags, respectively, i.e., <think> reasoning process here </think> <answer> answer here </answer>.
@@ -73,38 +102,22 @@ User: {question}
 Assistant: <think>
 ```
 
-This format enables exact-match evaluation of the `<answer>` tag contents without parsing the reasoning trace. The reward function is **binary** — a reward of 1 is assigned if the extracted answer matches the ground truth, and 0 otherwise. Crucially, the model receives no supervision on the reasoning process itself, only on whether the final answer is correct. This follows the outcome-supervised setup of DeepSeek-R1-Zero [[1]](#-references), which demonstrated that rich chain-of-thought reasoning can emerge from outcome supervision alone.
+This format enables exact-match evaluation of the `<answer>` tag contents without parsing the reasoning trace. The reward function is **binary** — a reward of 1 is assigned if the extracted answer matches the ground truth, and 0 otherwise. 
 
 ---
 
-## 📐 GRPO Loss
+## 📊 Results
 
-Three loss objectives are implemented and compared:
+### Method Comparison
 
-#### No Baseline (vanilla REINFORCE)
+*Validation accuracy on MATH across SFT, Expert Iteration, and GRPO (to be updated).*
 
-$$\mathcal{L}_{\text{no\_baseline}} = -\frac{1}{|T|}\sum_{t \in T} r \cdot \log \pi_\theta(a_t \mid s_t)$$
-
-where $r$ is the raw reward and $T$ is the set of response tokens.
-
-#### REINFORCE with Baseline
-
-$$\mathcal{L}_{\text{baseline}} = -\frac{1}{|T|}\sum_{t \in T} \hat{A} \cdot \log \pi_\theta(a_t \mid s_t)$$
-
-where $\hat{A}$ is the group-normalised advantage.
-
-#### GRPO-Clip *(default)*
-
-The clipped surrogate objective from PPO [[3]](#-references), adapted for GRPO:
-
-$$\mathcal{L}_{\text{clip}} = -\frac{1}{|T|}\sum_{t \in T} \min\!\Bigl(\rho_t\,\hat{A},\ \text{clip}(\rho_t,\, 1-\varepsilon,\, 1+\varepsilon)\,\hat{A}\Bigr)$$
-
-where the importance weight $\rho_t$ is the ratio of new to old policy probabilities, computed in **log space** for numerical stability:
-
-$$\rho_t = \frac{\pi_\theta(a_t \mid s_t)}{\pi_{\theta_{\mathrm{old}}}(a_t \mid s_t)} = \exp\!\Bigl(\log\pi_\theta(a_t\mid s_t) - \log\pi_{\theta_{\mathrm{old}}}(a_t\mid s_t)\Bigr)$$
+<div align="center">
+<img src="Figs/Average_Validation.png" width="47%" alt="Method comparison"/>
+<img src="Figs/Average_Length.png" width="48%" alt="Method comparison"/>
+</div>
 
 ---
-
 ## 🧪 GRPO Ablations
 
 The following design choices are systematically studied, drawing on recent findings from the DAPO [[4]](#-references) and Dr. GRPO [[5]](#-references) papers:
@@ -123,24 +136,10 @@ The following design choices are systematically studied, drawing on recent findi
 All experiments are logged with [Weights & Biases](https://wandb.ai).
 
 ---
-
-## 📊 Results
-
-### Method Comparison
-
-*Validation accuracy on MATH across SFT, Expert Iteration, and GRPO (to be updated).*
-
-<div align="center">
-<img src="Figs/Average_Validation.png" width="47%" alt="Method comparison"/>
-<img src="Figs/Average_Length.png" width="48%" alt="Method comparison"/>
-</div>
-
----
-
 ### GRPO Ablations
 
 <details>
-<summary><b>Loss objective</b> — no_baseline vs reinforce_with_baseline vs grpo_clip</summary>
+<summary><b>Loss objective</b> — no baseline vs reinforce with baseline vs grpo_clip</summary>
 <br/>
 <div align="center">
 <img src="plots/loss_ablation.png" width="700" alt="Loss objective ablation"/>
