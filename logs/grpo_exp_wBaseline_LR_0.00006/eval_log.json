@@ -1,0 +1,92 @@
+[
+  {
+    "eval/correct_length": 399.78901734104045,
+    "eval/incorrect_length": 765.042772861357,
+    "eval/average_length": 641.626953125,
+    "eval/reward_format": 0.8388671875,
+    "eval/reward_answer": 0.337890625,
+    "eval/reward_total": 0.337890625,
+    "eval_step": 4
+  },
+  {
+    "eval/correct_length": 485.22477064220186,
+    "eval/incorrect_length": 794.9489795918367,
+    "eval/average_length": 663.07421875,
+    "eval/reward_format": 0.8994140625,
+    "eval/reward_answer": 0.42578125,
+    "eval/reward_total": 0.42578125,
+    "eval_step": 9
+  },
+  {
+    "eval/correct_length": 525.1524249422632,
+    "eval/incorrect_length": 888.9712351945855,
+    "eval/average_length": 735.1298828125,
+    "eval/reward_format": 0.8837890625,
+    "eval/reward_answer": 0.4228515625,
+    "eval/reward_total": 0.4228515625,
+    "eval_step": 14
+  },
+  {
+    "eval/correct_length": 494.7123595505618,
+    "eval/incorrect_length": 1105.7996545768567,
+    "eval/average_length": 840.2392578125,
+    "eval/reward_format": 0.783203125,
+    "eval/reward_answer": 0.4345703125,
+    "eval/reward_total": 0.4345703125,
+    "eval_step": 19
+  },
+  {
+    "eval/correct_length": 476.97165991902835,
+    "eval/incorrect_length": 902.2433962264151,
+    "eval/average_length": 697.0830078125,
+    "eval/reward_format": 0.8837890625,
+    "eval/reward_answer": 0.482421875,
+    "eval/reward_total": 0.482421875,
+    "eval_step": 24
+  },
+  {
+    "eval/correct_length": 503.4715447154472,
+    "eval/incorrect_length": 999.0187969924812,
+    "eval/average_length": 760.923828125,
+    "eval/reward_format": 0.8955078125,
+    "eval/reward_answer": 0.48046875,
+    "eval/reward_total": 0.48046875,
+    "eval_step": 29
+  },
+  {
+    "eval/correct_length": 501.38771186440675,
+    "eval/incorrect_length": 1370.9710144927535,
+    "eval/average_length": 970.1474609375,
+    "eval/reward_format": 0.8515625,
+    "eval/reward_answer": 0.4609375,
+    "eval/reward_total": 0.4609375,
+    "eval_step": 34
+  },
+  {
+    "eval/correct_length": 496.14780600461893,
+    "eval/incorrect_length": 2074.0084602368865,
+    "eval/average_length": 1406.8076171875,
+    "eval/reward_format": 0.7587890625,
+    "eval/reward_answer": 0.4228515625,
+    "eval/reward_total": 0.4228515625,
+    "eval_step": 39
+  },
+  {
+    "eval/correct_length": 490.91931540342296,
+    "eval/incorrect_length": 2185.969105691057,
+    "eval/average_length": 1508.9423828125,
+    "eval/reward_format": 0.7421875,
+    "eval/reward_answer": 0.3994140625,
+    "eval/reward_total": 0.3994140625,
+    "eval_step": 44
+  },
+  {
+    "eval/correct_length": 512.215,
+    "eval/incorrect_length": 2256.9951923076924,
+    "eval/average_length": 1575.4404296875,
+    "eval/reward_format": 0.6845703125,
+    "eval/reward_answer": 0.390625,
+    "eval/reward_total": 0.390625,
+    "eval_step": 49
+  }
+]

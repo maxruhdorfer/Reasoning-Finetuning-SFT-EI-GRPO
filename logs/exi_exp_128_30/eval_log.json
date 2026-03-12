@@ -1,0 +1,11 @@
+[
+  {
+    "eval/correct_length": 423.31635802469134,
+    "eval/incorrect_length": 681.2332613390929,
+    "eval/average_length": 614.3812,
+    "eval/reward_format": 0.7962,
+    "eval/reward_answer": 0.2592,
+    "eval/reward_total": 0.2592,
+    "eval_step": 3325
+  }
+]

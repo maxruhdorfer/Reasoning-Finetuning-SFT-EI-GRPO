@@ -57,7 +57,7 @@ This iteratively improves the quality of the training distribution without havin
 
 GRPO [[1]](#-references) treats reasoning as a reinforcement learning problem with a verifiable binary reward. For each prompt, a group of $G$ responses is sampled from the current policy. Advantages are estimated by normalising rewards within each group — eliminating the need for a learned value network entirely:
 
-$$\hat{A}_i = \frac{r_i - \operatorname{mean}(\mathbf{r})}{\operatorname{std}(\mathbf{r}) + \varepsilon}, \quad \mathbf{r} = (r_1, \ldots, r_G)$$
+$$\hat{A}_i = \frac{r_i - \text{mean}(\mathbf{r})}{\text{std}(\mathbf{r}) + \varepsilon}, \quad \mathbf{r} = (r_1, \ldots, r_G)$$
 
 Rollouts are generated efficiently using [vLLM](https://github.com/vllm-project/vllm), with weights synchronised from the HuggingFace training model at the start of each rollout phase.
 
@@ -68,10 +68,9 @@ Rollouts are generated efficiently using [vLLM](https://github.com/vllm-project/
 All methods use the **R1-Zero prompt format** [[1]](#-references), which instructs the model to externalise its reasoning in structured tags before committing to a final answer:
 
 ```
-{question}
-
-Please reason step by step inside <think> ... </think> tags,
-then give your final answer inside <answer> ... </answer> tags.
+A conversation between User and Assistant. The User asks a question, and the Assistant solves it. The Assistant first thinks about the reasoning process in the mind and then provides the User with the answer. The reasoning process is enclosed within <think> </think> and answer is enclosed within <answer> </answer> tags, respectively, i.e., <think> reasoning process here </think> <answer> answer here </answer>.
+User: {question}
+Assistant: <think>
 ```
 
 This format enables exact-match evaluation of the `<answer>` tag contents without parsing the reasoning trace. The reward function is **binary** — a reward of 1 is assigned if the extracted answer matches the ground truth, and 0 otherwise. Crucially, the model receives no supervision on the reasoning process itself, only on whether the final answer is correct. This follows the outcome-supervised setup of DeepSeek-R1-Zero [[1]](#-references), which demonstrated that rich chain-of-thought reasoning can emerge from outcome supervision alone.
@@ -98,7 +97,7 @@ where $\hat{A}$ is the group-normalised advantage.
 
 The clipped surrogate objective from PPO [[3]](#-references), adapted for GRPO:
 
-$$\mathcal{L}_{\text{clip}} = -\frac{1}{|T|}\sum_{t \in T} \min\!\Bigl(\rho_t\,\hat{A},\ \operatorname{clip}(\rho_t,\, 1-\varepsilon,\, 1+\varepsilon)\,\hat{A}\Bigr)$$
+$$\mathcal{L}_{\text{clip}} = -\frac{1}{|T|}\sum_{t \in T} \min\!\Bigl(\rho_t\,\hat{A},\ \text{clip}(\rho_t,\, 1-\varepsilon,\, 1+\varepsilon)\,\hat{A}\Bigr)$$
 
 where the importance weight $\rho_t$ is the ratio of new to old policy probabilities, computed in **log space** for numerical stability:
 
@@ -132,7 +131,8 @@ All experiments are logged with [Weights & Biases](https://wandb.ai).
 *Validation accuracy on MATH across SFT, Expert Iteration, and GRPO (to be updated).*
 
 <div align="center">
-<img src="plots/method_comparison.png" width="700" alt="Method comparison"/>
+<img src="Figs/Average_Validation.png" width="47%" alt="Method comparison"/>
+<img src="Figs/Average_Length.png" width="48%" alt="Method comparison"/>
 </div>
 
 ---
