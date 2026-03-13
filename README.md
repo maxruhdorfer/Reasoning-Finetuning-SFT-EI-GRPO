@@ -207,15 +207,15 @@ At first the off-policy algorithm trains well with a relatively low clipping fra
 
 ## ⚙️ Installation
 
-We use the UV package manager and include the 
+All experiments were performed with python version ``Python 3.12.11``
 
 ```bash
 # Clone the repository
-git clone https://github.com/<your-username>/Reasoning-Finetuning-SFT-EI-GRPO.git
+git clone https://github.com/maxruhdorfer/Reasoning-Finetuning-SFT-EI-GRPO.git
 cd Reasoning-Finetuning-SFT-EI-GRPO
 
 # Install dependencies
-pip install torch transformers vllm wandb
+pip install -r requirements.txt
 
 # Log in to Weights & Biases
 wandb login
@@ -227,10 +227,76 @@ wandb login
 
 ## 🚀 Usage
 
+### SFT Training
+
+```bash
+python sft.py \
+    --train_dataset data/MATH/sft.jsonl \
+    --val_dataset data/MATH/validation.jsonl \
+    --batch_size 4 \
+    --gradient_accumulation_steps 4 \
+    --lr 2e-5 \
+    --num_epochs 6 \
+    --run_name my_sft_run
+```
+ 
+---
+ 
+#### Key Arguments
+ 
+| Argument | Default | Description |
+| --- | --- | --- |
+| `--train_dataset` | `data/MATH/sft.jsonl` | Path to SFT training dataset (`.jsonl`) |
+| `--val_dataset` | `data/MATH/validation.jsonl` | Path to validation dataset (`.jsonl`) |
+| `--prompt_path` | `prompts/r1_zero.prompt` | Path to prompt template (uses `{question}` placeholder) |
+| `--batch_size` | `4` | Dataloader batch size per step |
+| `--gradient_accumulation_steps` | `4` | Number of microbatches before an optimizer step |
+| `--lr` | `2e-5` | AdamW learning rate |
+| `--num_epochs` | `6` | Number of full passes over the training dataset |
+| `--num_sft_examples` | `None` | Randomly subsample $N$ examples from the training set (uses full set if unset) |
+| `--filter_correct` | `False` | If `True`, discard examples where the response does not match the ground truth |
+| `--output` | `logs` | Root directory for run outputs and model checkpoint |
+| `--run_name` | auto-generated | W&B run name and output subdirectory name |
+
+### Expert Iteration Training
+
+```bash
+python expert_iteration.py \
+    --train_dataset data/MATH/train.jsonl \
+    --val_dataset data/MATH/validation.jsonl \
+    --ei_steps 5 \
+    --ei_batch 128 \
+    --num_rollouts 10 \
+    --num_epochs 1 \
+    --batch_size 4 \
+    --gradient_accumulation_steps 4 \
+    --lr 2e-5 \
+    --run_name my_ei_run
+```
+ 
+---
+ 
+#### Key Arguments
+ 
+| Argument | Default | Description |
+| --- | --- | --- |
+| `--train_dataset` | `data/MATH/train.jsonl` | Path to training dataset (`.jsonl`) |
+| `--val_dataset` | `data/MATH/validation.jsonl` | Path to validation dataset (`.jsonl`) |
+| `--prompt_path` | `prompts/r1_zero.prompt` | Path to prompt template (uses `{question}` placeholder) |
+| `--ei_steps` | `5` | Number of expert iteration steps (rollout → filter → SFT cycles) |
+| `--ei_batch` | `128` | Number of prompts sampled from the training set per EI step |
+| `--num_rollouts` | `10` | Number of responses generated per prompt during rollout |
+| `--num_epochs` | `1` | SFT epochs run on the filtered correct responses each EI step |
+| `--batch_size` | `4` | Dataloader batch size for SFT |
+| `--gradient_accumulation_steps` | `4` | Number of microbatches before an optimizer step |
+| `--lr` | `2e-5` | AdamW learning rate |
+| `--output` | `logs` | Root directory for run outputs and model checkpoint |
+| `--run_name` | auto-generated | W&B run name and output subdirectory name |
+
 ### GRPO Training
 
 ```bash
-python train_grpo.py \
+python grpo.py \
     --train_dataset data/MATH/train.jsonl \
     --val_dataset data/MATH/validation.jsonl \
     --loss_type grpo_clip \
@@ -245,20 +311,35 @@ python train_grpo.py \
     --run_name my_grpo_run
 ```
 
-### Key Arguments
+#### Key Arguments
 
-| Argument                     | Default                   | Description                                              |
-| ---------------------------- | ------------------------- | -------------------------------------------------------- |
-| `--loss_type`                | `reinforce_with_baseline` | `no_baseline`, `reinforce_with_baseline`, or `grpo_clip` |
-| `--group_size`               | `8`                       | Number of responses sampled per prompt $G$               |
-| `--rollout_batch_size`       | `256`                     | Total responses generated per GRPO step                  |
-| `--use_std_normalization`    | `False`                   | Normalise advantages by within-group std                 |
-| `--use_length_normalization` | `False`                   | Sequence-level loss normalisation                        |
-| `--epochs_per_rollout_batch` | `1`                       | Training epochs per rollout batch (>1 = off-policy)      |
-| `--cliprange`                | `0.2`                     | Clip range $\varepsilon$ for `grpo_clip`                 |
-| `--sampling_temperature`     | `1.0`                     | Rollout sampling temperature                             |
-| `--eval_interval`            | `5`                       | Evaluate every $N$ GRPO steps                            |
-| `--save_model`               | `False`                   | Save model checkpoint after training                     |
+| Argument | Default | Description |
+| --- | --- | --- |
+| `--train_dataset` | `data/MATH/train.jsonl` | Path to training dataset (`.jsonl`) |
+| `--val_dataset` | `data/MATH/validation.jsonl` | Path to validation dataset (`.jsonl`) |
+| `--loss_type` | `reinforce_with_baseline` | `no_baseline`, `reinforce_with_baseline`, or `grpo_clip` |
+| `--group_size` | `8` | Number of responses sampled per prompt $G$ |
+| `--rollout_batch_size` | `256` | Total responses generated per GRPO step |
+| `--train_batch_size` | `256` | Total responses used for the training update |
+| `--gradient_accumulation_steps` | `128` | Microbatch accumulation steps; `micro_batch = train_batch / accum_steps` |
+| `--learning_rate` | `3e-5` | AdamW learning rate |
+| `--n_grpo_steps` | `100` | Number of GRPO steps to run |
+| `--use_std_normalization` | `False` | Normalise advantages by within-group std |
+| `--use_length_normalization` | `False` | Sequence-level loss normalisation |
+| `--epochs_per_rollout_batch` | `1` | Training epochs per rollout batch (>1 = off-policy) |
+| `--cliprange` | `0.2` | Clip range $\varepsilon$ for `grpo_clip` |
+| `--sampling_temperature` | `1.0` | Rollout sampling temperature |
+| `--sampling_max_tokens` | `1024` | Maximum tokens generated per rollout |
+| `--sampling_min_tokens` | `4` | Minimum tokens generated per rollout |
+| `--gpu_memory_utilization` | `0.4` | vLLM GPU memory fraction |
+| `--beta` | `0.0` | Entropy bonus coefficient (annealed over training) |
+| `--advantage_eps` | `1e-6` | Epsilon added to std for numerical stability in advantage normalization |
+| `--eval_interval` | `5` | Evaluate every $N$ GRPO steps |
+| `--eval_samples` | `None` | Number of validation samples to use (defaults to full set) |
+| `--prompt_path` | `prompts/r1_zero.prompt` | Path to prompt template (uses `{question}` placeholder) |
+| `--output` | `logs` | Root directory for run outputs and checkpoints |
+| `--run_name` | auto-generated | W&B run name and output subdirectory name |
+| `--save_model` | `False` | Save model checkpoint after training |
 
 ---
 
@@ -266,15 +347,20 @@ python train_grpo.py \
 
 ```
 .
-├── train_grpo.py              # Main GRPO training loop with ablation flags
-├── train_sft.py               # SFT training loop
-├── train_ei.py                # Expert iteration training loop
-├── aux.py                     # Utilities: vLLM init, tokenisation, log-prob computation, eval
-├── drgrpo_grader.py           # Reward function for the R1-Zero format
+├── grpo.py                     # Main GRPO training loop with ablation flags
+├── sft.py                      # SFT training loop
+├── expert_iteration.py         # Expert iteration training loop
+├── aux.py                      # Utilities: vLLM init, tokenisation, log-prob computation, eval
+├── drgrpo_grader.py            # Reward function for the R1-Zero format
+├── evaluate_zeroShot.py        # Evaluates the zero-shot accuracy of the Qwen base model before training
+├── plots.ipynb                 # Generate plots of results
+├── README.md                   # Readme file
+├── requirements.txt            # Python package requirements
 ├── prompts/
-│   └── r1_zero.prompt         # Prompt template
+│   └── r1_zero.prompt          # Prompt template
 ├── data/
-│   └── MATH/
+│   └── MATH/                   # Training data
+│       ├── sft.jsonl
 │       ├── train.jsonl
 │       └── validation.jsonl
 └── logs/                      # Training outputs and eval logs (generated at runtime)
@@ -301,5 +387,5 @@ python train_grpo.py \
 ---
 
 <div align="center">
-<sub>MIT License · Inspired by Stanford CS336 · Built with PyTorch & vLLM</sub>
+<sub>MIT License · Built with PyTorch & vLLM</sub>
 </div>
