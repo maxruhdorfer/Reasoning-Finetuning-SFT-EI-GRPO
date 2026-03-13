@@ -205,27 +205,9 @@ At first the off-policy algorithm trains well with a relatively low clipping fra
 
 ---
 
-## 🗂️ Repository Structure
-
-```
-.
-├── train_grpo.py              # Main GRPO training loop with ablation flags
-├── train_sft.py               # SFT training loop
-├── train_ei.py                # Expert iteration training loop
-├── aux.py                     # Utilities: vLLM init, tokenisation, log-prob computation, eval
-├── drgrpo_grader.py           # Reward function for the R1-Zero format
-├── prompts/
-│   └── r1_zero.prompt         # Prompt template
-├── data/
-│   └── MATH/
-│       ├── train.jsonl
-│       └── validation.jsonl
-└── logs/                      # Training outputs and eval logs (generated at runtime)
-```
-
----
-
 ## ⚙️ Installation
+
+We use the UV package manager and include the 
 
 ```bash
 # Clone the repository
@@ -277,6 +259,26 @@ python train_grpo.py \
 | `--sampling_temperature`     | `1.0`                     | Rollout sampling temperature                             |
 | `--eval_interval`            | `5`                       | Evaluate every $N$ GRPO steps                            |
 | `--save_model`               | `False`                   | Save model checkpoint after training                     |
+
+---
+
+## 🗂️ Repository Structure
+
+```
+.
+├── train_grpo.py              # Main GRPO training loop with ablation flags
+├── train_sft.py               # SFT training loop
+├── train_ei.py                # Expert iteration training loop
+├── aux.py                     # Utilities: vLLM init, tokenisation, log-prob computation, eval
+├── drgrpo_grader.py           # Reward function for the R1-Zero format
+├── prompts/
+│   └── r1_zero.prompt         # Prompt template
+├── data/
+│   └── MATH/
+│       ├── train.jsonl
+│       └── validation.jsonl
+└── logs/                      # Training outputs and eval logs (generated at runtime)
+```
 
 ---
 
