@@ -56,22 +56,22 @@ This iteratively improves the quality of the training distribution without havin
 
 In RLVR [[1]](#-references) reasoning fine-tuning is treated as a reinforcement learning problem with a verifiable binary reward. The language model with parameters $\theta$ is treated as a policy $\pi_\theta$, which given a current state $s_t$ (the input tokens) defines a distribution for the next action (the next token) $a_t \sim \pi_\theta (\cdot | s_t)$, where $\pi_\theta (a_t | s_t)$ is simply the softmax of the language model output for the next token to turn the logits into a probability. The reward $R(\tau)$ for a given trajectory $\tau$, i.e. the full rollout, is binary and one typically assigns a reward of $1$ to a correct answer and a reward of $0$ to an incorrect answer. All reinforcement learning problems have the goal to maximize the expected return in some form, i.e. we want to maximize an objective function of the form
 
-$$ J(\theta) = \mathbb{E}_{\tau \sim \pi_\theta} [R(\tau)] = \sum\_\tau P(\tau | \theta) R(\tau)\,. $$
+$$ J(\theta) = \mathbb{E}_{\tau \sim \pi_\theta} [R(\tau)] = \sum_{\tau} P(\tau | \theta) R(\tau)\,. $$
 
 In a language model $P(\tau | \theta) = \rho_0 (s_0) \prod_{t=0}^T P(s_{t+1} | s_t , a_t) \pi_\theta (a_t |s_t)$.
 Using the simple log derivative trick $\nabla_\theta P = P \nabla_\theta \log P$, one finds the REINFORCE policy gradient
 
-$$ \nabla*\theta J(\theta) = \mathbb{E}*{\tau \sim \pi*\theta} \left[\sum*{t=0}^T \nabla*\theta \log \pi*\theta (a_t | s_t) R(\tau) \right] $$
+$$ \nabla_\theta J(\theta) = \mathbb{E}_{\tau \sim \pi_\theta} \left[\sum_{t=0}^T \nabla_\theta \log \pi_\theta (a_t | s_t) R(\tau) \right] $$
 
 The expectation value can be approximated by sampling rollouts from the language model. There are two useful observations: i) when writing the expectation value as a Monte Carlo probe of the rollouts, this is equivalent to considering a loss function without the gradient and ii) we can add a reward baseline $b(s_t)$ which decreases the varience of the reward estimator. This gives two versions of the REINFORCE algorithm/loss
 
 **Vanilla REINFORCE Loss**
 
-$$ L(\theta ) = -\frac{1}{N} \sum*{i=1}^{N} \sum*{t=0}^T \log \pi\_\theta (a^{(i)}\_t | s^{(i)}\_t) R(\tau^{(i)})$$
+$$ L(\theta ) = -\frac{1}{N} \sum_{i=1}^{N} \sum_{t=0}^T \log \pi_\theta (a^{(i)}_t | s^{(i)}_t) R(\tau^{(i)})$$
 
 **REINFORCE Loss with Baseline**
 
-$$ L(\theta ) = -\frac{1}{N} \sum*{i=1}^{N} \sum*{t=0}^T \log \pi\_\theta (a^{(i)}\_t | s^{(i)}\_t) (R(\tau^{(i)}) - b(s^{(i)}\_t))$$
+$$ L(\theta ) = -\frac{1}{N} \sum_{i=1}^{N} \sum_{t=0}^T \log \pi_\theta (a^{(i)}_t | s^{(i)}_t) (R(\tau^{(i)}) - b(s^{(i)}_t))$$
 
 The best choice is to use the state value function $V(s^{(i)}_t)$ which quantifies the average reward reached from state $s^{(i)}_t$. This is difficult to estimate for language models, which is why GRPO uses group advantages as baseline.
 
@@ -83,7 +83,7 @@ $$\hat{A}_i   = \frac{r_i - \text{mean}(\mathbf{r})}{\text{std}(\mathbf{r}) + \v
 
 where $r_i$ are the rewards of the $i$-th group element. The full objective function is
 
-$$ J(\theta ) = \mathbb{E}_{q\sim\mathcal{D},\, \{o^{(i)}\}_{i=1}^G \sim \pi*\theta (\cdot | q)} \left[ \frac{1}{G}\sum*{i=1}^G \frac{1}{|o^{(i)}|} \sum*{t=1}^{|o^{(i)}|} \min\left( \frac{\pi*\theta (o*t^{(i)}| q , o^{(i)}*{<t})}{\pi*{\theta*{\rm old}} (o*t^{(i)}| q , o^{(i)}*{<t})} A^{(i)} , \text{clip}\left(\frac{\pi*\theta (o_t^{(i)}| q , o^{(i)}*{<t})}{\pi*{\theta*{\rm old}} (o*t^{(i)}| q , o^{(i)}*{<t})}, 1-\epsilon, 1+\epsilon \right) A^{(i)}\right) \right]\,, $$
+$$ J(\theta ) = \mathbb{E}_{q\sim\mathcal{D},\, \{o^{(i)}\}_{i=1}^G \sim \pi_\theta (\cdot | q)} \left[ \frac{1}{G}\sum_{i=1}^G \frac{1}{|o^{(i)}|} \sum_{t=1}^{|o^{(i)}|} \min\left( \frac{\pi_\theta (o_t^{(i)}| q , o^{(i)}_{<t})}{\pi_{\theta_{\rm old}} (o_t^{(i)}| q , o^{(i)}_{<t})} A^{(i)} , \text{clip}\left(\frac{\pi_\theta (o_t^{(i)}| q , o^{(i)}_{<t})}{\pi_{\theta_{\rm old}} (o_t^{(i)}| q , o^{(i)}_{<t})}, 1-\epsilon, 1+\epsilon \right) A^{(i)}\right) \right]\,, $$
 
 where $q$ are the questions and $o_t^{(i)}$ is the $i$-th model output at step $t$ in the trajectory. The policy ratios allow to go off-policy and are reminiscent of importance sampling. The clipping makes sure that we do not stray too far from the original policy. The original GRPO realization also had a KL loss term. However, recently it has been observed that the KL loss term is not needed [[5]](#-references).
 
@@ -207,7 +207,7 @@ At first the off-policy algorithm trains well with a relatively low clipping fra
 
 ## ⚙️ Installation
 
-All experiments were performed with python version ``Python 3.12.11``
+All experiments were performed with python version `Python 3.12.11`
 
 ```bash
 # Clone the repository
@@ -239,24 +239,24 @@ python sft.py \
     --num_epochs 6 \
     --run_name my_sft_run
 ```
- 
+
 ---
- 
+
 #### Key Arguments
- 
-| Argument | Default | Description |
-| --- | --- | --- |
-| `--train_dataset` | `data/MATH/sft.jsonl` | Path to SFT training dataset (`.jsonl`) |
-| `--val_dataset` | `data/MATH/validation.jsonl` | Path to validation dataset (`.jsonl`) |
-| `--prompt_path` | `prompts/r1_zero.prompt` | Path to prompt template (uses `{question}` placeholder) |
-| `--batch_size` | `4` | Dataloader batch size per step |
-| `--gradient_accumulation_steps` | `4` | Number of microbatches before an optimizer step |
-| `--lr` | `2e-5` | AdamW learning rate |
-| `--num_epochs` | `6` | Number of full passes over the training dataset |
-| `--num_sft_examples` | `None` | Randomly subsample $N$ examples from the training set (uses full set if unset) |
-| `--filter_correct` | `False` | If `True`, discard examples where the response does not match the ground truth |
-| `--output` | `logs` | Root directory for run outputs and model checkpoint |
-| `--run_name` | auto-generated | W&B run name and output subdirectory name |
+
+| Argument                        | Default                      | Description                                                                    |
+| ------------------------------- | ---------------------------- | ------------------------------------------------------------------------------ |
+| `--train_dataset`               | `data/MATH/sft.jsonl`        | Path to SFT training dataset (`.jsonl`)                                        |
+| `--val_dataset`                 | `data/MATH/validation.jsonl` | Path to validation dataset (`.jsonl`)                                          |
+| `--prompt_path`                 | `prompts/r1_zero.prompt`     | Path to prompt template (uses `{question}` placeholder)                        |
+| `--batch_size`                  | `4`                          | Dataloader batch size per step                                                 |
+| `--gradient_accumulation_steps` | `4`                          | Number of microbatches before an optimizer step                                |
+| `--lr`                          | `2e-5`                       | AdamW learning rate                                                            |
+| `--num_epochs`                  | `6`                          | Number of full passes over the training dataset                                |
+| `--num_sft_examples`            | `None`                       | Randomly subsample $N$ examples from the training set (uses full set if unset) |
+| `--filter_correct`              | `False`                      | If `True`, discard examples where the response does not match the ground truth |
+| `--output`                      | `logs`                       | Root directory for run outputs and model checkpoint                            |
+| `--run_name`                    | auto-generated               | W&B run name and output subdirectory name                                      |
 
 ### Expert Iteration Training
 
@@ -273,25 +273,25 @@ python expert_iteration.py \
     --lr 2e-5 \
     --run_name my_ei_run
 ```
- 
+
 ---
- 
+
 #### Key Arguments
- 
-| Argument | Default | Description |
-| --- | --- | --- |
-| `--train_dataset` | `data/MATH/train.jsonl` | Path to training dataset (`.jsonl`) |
-| `--val_dataset` | `data/MATH/validation.jsonl` | Path to validation dataset (`.jsonl`) |
-| `--prompt_path` | `prompts/r1_zero.prompt` | Path to prompt template (uses `{question}` placeholder) |
-| `--ei_steps` | `5` | Number of expert iteration steps (rollout → filter → SFT cycles) |
-| `--ei_batch` | `128` | Number of prompts sampled from the training set per EI step |
-| `--num_rollouts` | `10` | Number of responses generated per prompt during rollout |
-| `--num_epochs` | `1` | SFT epochs run on the filtered correct responses each EI step |
-| `--batch_size` | `4` | Dataloader batch size for SFT |
-| `--gradient_accumulation_steps` | `4` | Number of microbatches before an optimizer step |
-| `--lr` | `2e-5` | AdamW learning rate |
-| `--output` | `logs` | Root directory for run outputs and model checkpoint |
-| `--run_name` | auto-generated | W&B run name and output subdirectory name |
+
+| Argument                        | Default                      | Description                                                      |
+| ------------------------------- | ---------------------------- | ---------------------------------------------------------------- |
+| `--train_dataset`               | `data/MATH/train.jsonl`      | Path to training dataset (`.jsonl`)                              |
+| `--val_dataset`                 | `data/MATH/validation.jsonl` | Path to validation dataset (`.jsonl`)                            |
+| `--prompt_path`                 | `prompts/r1_zero.prompt`     | Path to prompt template (uses `{question}` placeholder)          |
+| `--ei_steps`                    | `5`                          | Number of expert iteration steps (rollout → filter → SFT cycles) |
+| `--ei_batch`                    | `128`                        | Number of prompts sampled from the training set per EI step      |
+| `--num_rollouts`                | `10`                         | Number of responses generated per prompt during rollout          |
+| `--num_epochs`                  | `1`                          | SFT epochs run on the filtered correct responses each EI step    |
+| `--batch_size`                  | `4`                          | Dataloader batch size for SFT                                    |
+| `--gradient_accumulation_steps` | `4`                          | Number of microbatches before an optimizer step                  |
+| `--lr`                          | `2e-5`                       | AdamW learning rate                                              |
+| `--output`                      | `logs`                       | Root directory for run outputs and model checkpoint              |
+| `--run_name`                    | auto-generated               | W&B run name and output subdirectory name                        |
 
 ### GRPO Training
 
@@ -313,33 +313,33 @@ python grpo.py \
 
 #### Key Arguments
 
-| Argument | Default | Description |
-| --- | --- | --- |
-| `--train_dataset` | `data/MATH/train.jsonl` | Path to training dataset (`.jsonl`) |
-| `--val_dataset` | `data/MATH/validation.jsonl` | Path to validation dataset (`.jsonl`) |
-| `--loss_type` | `reinforce_with_baseline` | `no_baseline`, `reinforce_with_baseline`, or `grpo_clip` |
-| `--group_size` | `8` | Number of responses sampled per prompt $G$ |
-| `--rollout_batch_size` | `256` | Total responses generated per GRPO step |
-| `--train_batch_size` | `256` | Total responses used for the training update |
-| `--gradient_accumulation_steps` | `128` | Microbatch accumulation steps; `micro_batch = train_batch / accum_steps` |
-| `--learning_rate` | `3e-5` | AdamW learning rate |
-| `--n_grpo_steps` | `100` | Number of GRPO steps to run |
-| `--use_std_normalization` | `False` | Normalise advantages by within-group std |
-| `--use_length_normalization` | `False` | Sequence-level loss normalisation |
-| `--epochs_per_rollout_batch` | `1` | Training epochs per rollout batch (>1 = off-policy) |
-| `--cliprange` | `0.2` | Clip range $\varepsilon$ for `grpo_clip` |
-| `--sampling_temperature` | `1.0` | Rollout sampling temperature |
-| `--sampling_max_tokens` | `1024` | Maximum tokens generated per rollout |
-| `--sampling_min_tokens` | `4` | Minimum tokens generated per rollout |
-| `--gpu_memory_utilization` | `0.4` | vLLM GPU memory fraction |
-| `--beta` | `0.0` | Entropy bonus coefficient (annealed over training) |
-| `--advantage_eps` | `1e-6` | Epsilon added to std for numerical stability in advantage normalization |
-| `--eval_interval` | `5` | Evaluate every $N$ GRPO steps |
-| `--eval_samples` | `None` | Number of validation samples to use (defaults to full set) |
-| `--prompt_path` | `prompts/r1_zero.prompt` | Path to prompt template (uses `{question}` placeholder) |
-| `--output` | `logs` | Root directory for run outputs and checkpoints |
-| `--run_name` | auto-generated | W&B run name and output subdirectory name |
-| `--save_model` | `False` | Save model checkpoint after training |
+| Argument                        | Default                      | Description                                                              |
+| ------------------------------- | ---------------------------- | ------------------------------------------------------------------------ |
+| `--train_dataset`               | `data/MATH/train.jsonl`      | Path to training dataset (`.jsonl`)                                      |
+| `--val_dataset`                 | `data/MATH/validation.jsonl` | Path to validation dataset (`.jsonl`)                                    |
+| `--loss_type`                   | `reinforce_with_baseline`    | `no_baseline`, `reinforce_with_baseline`, or `grpo_clip`                 |
+| `--group_size`                  | `8`                          | Number of responses sampled per prompt $G$                               |
+| `--rollout_batch_size`          | `256`                        | Total responses generated per GRPO step                                  |
+| `--train_batch_size`            | `256`                        | Total responses used for the training update                             |
+| `--gradient_accumulation_steps` | `128`                        | Microbatch accumulation steps; `micro_batch = train_batch / accum_steps` |
+| `--learning_rate`               | `3e-5`                       | AdamW learning rate                                                      |
+| `--n_grpo_steps`                | `100`                        | Number of GRPO steps to run                                              |
+| `--use_std_normalization`       | `False`                      | Normalise advantages by within-group std                                 |
+| `--use_length_normalization`    | `False`                      | Sequence-level loss normalisation                                        |
+| `--epochs_per_rollout_batch`    | `1`                          | Training epochs per rollout batch (>1 = off-policy)                      |
+| `--cliprange`                   | `0.2`                        | Clip range $\varepsilon$ for `grpo_clip`                                 |
+| `--sampling_temperature`        | `1.0`                        | Rollout sampling temperature                                             |
+| `--sampling_max_tokens`         | `1024`                       | Maximum tokens generated per rollout                                     |
+| `--sampling_min_tokens`         | `4`                          | Minimum tokens generated per rollout                                     |
+| `--gpu_memory_utilization`      | `0.4`                        | vLLM GPU memory fraction                                                 |
+| `--beta`                        | `0.0`                        | Entropy bonus coefficient (annealed over training)                       |
+| `--advantage_eps`               | `1e-6`                       | Epsilon added to std for numerical stability in advantage normalization  |
+| `--eval_interval`               | `5`                          | Evaluate every $N$ GRPO steps                                            |
+| `--eval_samples`                | `None`                       | Number of validation samples to use (defaults to full set)               |
+| `--prompt_path`                 | `prompts/r1_zero.prompt`     | Path to prompt template (uses `{question}` placeholder)                  |
+| `--output`                      | `logs`                       | Root directory for run outputs and checkpoints                           |
+| `--run_name`                    | auto-generated               | W&B run name and output subdirectory name                                |
+| `--save_model`                  | `False`                      | Save model checkpoint after training                                     |
 
 ---
 
