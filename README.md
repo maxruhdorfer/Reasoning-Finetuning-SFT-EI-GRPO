@@ -125,6 +125,21 @@ For the GRPO algorithm we perform $100$ GRPO steps, where in each step we take a
 <img src="Figs/Average_Validation.png" width="80%" alt="Method comparison"/>
 </div>
 
+The table below summarises the best validation accuracy reached by each method, measured on a 1024-question subset of the MATH validation set. The zero-shot baseline is the base `Qwen2.5-Math-1.5B` model evaluated with the R1-Zero prompt before any fine-tuning (2.8% accuracy, with only 17.6% format compliance).
+
+<div align="center">
+
+| Method | Best Val Accuracy | Δ vs. Zero-Shot |
+| --- | :---: | :---: |
+| Zero-Shot (base model) | 2.8% | — |
+| SFT | 31.6% | +28.8 pp |
+| Expert Iteration | 25.9% | +23.1 pp |
+| GRPO (clip, no std norm) | **53.4%** | **+50.6 pp** |
+
+</div>
+
+GRPO achieves the highest accuracy of **53.4%**, a **19× improvement** over the 2.8% zero-shot baseline, without requiring any human-annotated reasoning traces.
+
 There are a few important observations that follow from our results:
 
 1. GRPO yields by far the best results and does not require human labeled data.
